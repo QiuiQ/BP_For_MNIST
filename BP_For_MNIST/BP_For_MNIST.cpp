@@ -33,30 +33,32 @@ using namespace std;
 class BP
 {
 public:
-	char img[PIXEL];
+	unsigned char img[PIXEL];
 	double w0[LAYER1][PIXEL];
 	double w1[LAYER2][LAYER1];
-	double ans[NUM];
-	double value[2][NUM];
-	double err[2][NUM];
+	double y0[LAYER1];
+	double y1[LAYER2];
+	double ans[LAYER2];
+	double err0[LAYER1];
+	double err1[LAYER2];
 
 	BP()
 	{
 		for (int i = 0; i < PIXEL; i++) img[i] = 0;
 
-		for (int i = 0; i < NUM; i++)
+		for (int i = 0; i < LAYER1; i++)
 		for (int j = 0; j < PIXEL; j++) w0[i][j] = 0;
 
-		for (int i = 0; i < NUM; i++)
-		for (int j = 0; j < NUM; j++) w1[i][j] = 0;
+		for (int i = 0; i < LAYER2; i++)
+		for (int j = 0; j < LAYER1; j++) w1[i][j] = 0;
 
-		for (int i = 0; i < 2; i++)
-		for (int j = 0; j < NUM; j++) value[i][j] = 0;
+		for (int i = 0; i < LAYER1; i++) y0[i] = 0;
+		for (int j = 0; j < LAYER2; j++) y1[j] = 0;
 
 		for (int i = 0; i < NUM; i++) ans[i] = 0;
 
-		for (int i = 0; i < 2; i++)
-		for (int j = 0; j < NUM; j++) err[i][j] = 0;
+		for (int i = 0; i < 2; i++) err0[i] = 0;
+		for (int j = 0; j < NUM; j++) err1[j] = 0;
 	}
 
 	void readMNIST_TrainData()
@@ -78,8 +80,7 @@ public:
 			for (int i = 0; i < PIXEL; i++)
 			{
 				fscanf(f, "%c", &c);
-				if (c < 0) img[i] = c*-1;
-				else img[i] = c;
+				img[i] = c;
 			}
 
 			for (int j = 0; j < NUM; j++) ans[j] = 0;
@@ -105,7 +106,7 @@ public:
 			{
 				sum += w0[i][j] * (double)img[j] / 255;
 			}
-			value[n][i] = 1.0 / (1.0 + exp(-1.0 * sum));
+			y0[i] = 1.0 / (1.0 + exp(-1.0 * sum));
 		}
 		else
 		for (int i = 0; i < LAYER2; i++)
@@ -113,9 +114,9 @@ public:
 			double sum = 0;
 			for (int j = 0; j < LAYER1; j++)
 			{
-				sum += w1[i][j] * value[n - 1][j];
+				sum += w1[i][j] * y0[j];
 			}
-			value[n][i] = 1.0 / (1.0 + exp(-1.0 * sum));
+			y1[i] = 1.0 / (1.0 + exp(-1.0 * sum));
 		}
 	}
 
@@ -123,14 +124,14 @@ public:
 	{
 		for (int i = 0; i < LAYER2; i++)
 		{
-			err[1][i] = ans[i] - value[1][i];
+			err1[i] = ans[i] - y1[i];
 		}
 
 		for (int i = 0; i < LAYER2; i++)
 		{
 			double d = 0;
-			for (int j = 0; j < LAYER1; j++) d += err[1][i] * w1[i][j];
-			err[0][i] = d * value[0][i] * (1 - value[0][i]);
+			for (int j = 0; j < LAYER1; j++) d += err1[i] * w1[i][j];
+			err0[i] = d * y0[i] * (1 - y0[i]);
 		}
 	}
 
@@ -140,7 +141,7 @@ public:
 		{
 			for (int j = 0; j < PIXEL; j++)
 			{
-				w0[i][j] += LR * err[0][i] * (double)img[j] / 255;
+				w0[i][j] += LR * err0[i] * (double)img[j] / 255;
 			}
 		}
 
@@ -148,7 +149,7 @@ public:
 		{
 			for (int j = 0; j < LAYER1; j++)
 			{
-				w1[i][j] += LR * err[1][i] * value[0][j];
+				w1[i][j] += LR * err1[i] * y0[j];
 			}
 		}
 	}
@@ -173,8 +174,7 @@ public:
 			for (int i = 0; i < PIXEL; i++)
 			{
 				fscanf(f, "%c", &c);
-				if (c < 0) img[i] = c*-1;
-				else img[i] = c;
+				img[i] = c;
 			}
 
 			for (int j = 0; j < NUM; j++) ans[j] = 0;
@@ -187,9 +187,9 @@ public:
 			int location = 0;
 			for (int j = 0; j < LAYER2; j++) 
 			{
-				if (value[1][j]>MAX)
+				if (y1[j]>MAX)
 				{
-					MAX = value[1][j];
+					MAX = y1[j];
 					location = j;
 				}
 			}
@@ -208,7 +208,7 @@ public:
 			{
 				sum += w0[i][j] * (double)img[j] / 255;
 			}
-			value[n][i] = 1.0 / (1.0 + exp(-1.0 * sum));
+			y0[i] = 1.0 / (1.0 + exp(-1.0 * sum));
 		}
 		else
 		for (int i = 0; i < LAYER2; i++)
@@ -216,9 +216,9 @@ public:
 			double sum = 0;
 			for (int j = 0; j < LAYER1; j++)
 			{
-				sum += w1[i][j] * value[n - 1][j];
+				sum += w1[i][j] * y0[j];
 			}
-			value[n][i] = 1.0 / (1.0 + exp(-1.0 * sum));
+			y1[i] = 1.0 / (1.0 + exp(-1.0 * sum));
 		}
 	}
 };
